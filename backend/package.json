@@ -1,0 +1,28 @@
+{
+	"name": "form-builder-backend",
+	"version": "1.0.0",
+	"description": "Go Fiber backend for the Form Builder application",
+	"main": "main.go",
+	"scripts": {
+		"start": "go run main.go",
+		"dev": "go run main.go",
+		"build": "go build -o bin/server main.go",
+		"test": "go test ./...",
+		"clean": "go clean",
+		"deps": "go mod tidy",
+		"fmt": "go fmt ./...",
+		"vet": "go vet ./..."
+	},
+	"keywords": [
+		"go",
+		"fiber",
+		"mongodb",
+		"api",
+		"forms"
+	],
+	"author": "Form Builder Team",
+	"license": "MIT",
+	"dependencies": {
+		"go": ">=1.21.0"
+	}
+}
