@@ -12,6 +12,8 @@ import {
 } from './types';
 import { clearDraft, loadDraft, saveDraft } from './storage';
 
+const DND_FIELD_TYPE = 'application/x-form-field-type';
+
 function generateId() {
 	return Math.random().toString(36).slice(2, 10);
 }
@@ -115,6 +117,8 @@ export default function BuilderPage() {
 	const [mode, setMode] = useState<'build' | 'preview'>('build');
 	const [dragIndex, setDragIndex] = useState<number | null>(null);
 	const saveTimer = useRef<number | null>(null);
+	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
 	useEffect(() => {
 		const existing = loadDraft();
@@ -131,7 +135,10 @@ export default function BuilderPage() {
 
 	useEffect(() => {
 		if (saveTimer.current) window.clearTimeout(saveTimer.current);
-		saveTimer.current = window.setTimeout(() => saveDraft(draft), 400);
+		saveTimer.current = window.setTimeout(() => {
+			saveDraft(draft);
+			setLastSavedAt(Date.now());
+		}, 400);
 	}, [draft]);
 
 	const addField = useCallback((type: FieldType) => {
@@ -153,12 +160,19 @@ export default function BuilderPage() {
 		);
 	}, []);
 
-	const onDragStart = (index: number) => setDragIndex(index);
+	const onDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+		e.dataTransfer.effectAllowed = 'move';
+		e.dataTransfer.setData('text/plain', String(index));
+		setDragIndex(index);
+	};
 	const onDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
 		e.preventDefault();
+		e.dataTransfer.dropEffect = 'move';
 		if (dragIndex === null || dragIndex === index) return;
+		setHoverIndex(index);
 	};
-	const onDrop = (_e: React.DragEvent<HTMLDivElement>, index: number) => {
+	const onDrop = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+		e.preventDefault();
 		if (dragIndex === null) return;
 		setFields((prev) => {
 			const cp = [...prev];
@@ -167,6 +181,11 @@ export default function BuilderPage() {
 			return cp;
 		});
 		setDragIndex(null);
+		setHoverIndex(null);
+	};
+	const onDragEnd = () => {
+		setDragIndex(null);
+		setHoverIndex(null);
 	};
 
 	const errors = useMemo(
@@ -197,7 +216,7 @@ export default function BuilderPage() {
 					value={title}
 					onChange={(e) => setTitle(e.target.value)}
 				/>
-				<div className='flex gap-2'>
+				<div className='flex gap-2 items-center'>
 					<button
 						className={`px-3 py-1 rounded border ${
 							mode === 'build' ? 'bg-foreground text-background' : ''
@@ -217,195 +236,274 @@ export default function BuilderPage() {
 						onClick={reset}>
 						Clear
 					</button>
+					<button
+						className='px-3 py-1 rounded border'
+						onClick={() => {
+							saveDraft(draft);
+							setLastSavedAt(Date.now());
+						}}>
+						Save draft
+					</button>
+					<button
+						className='px-3 py-1 rounded border'
+						onClick={() => {
+							const d = loadDraft();
+							if (d) {
+								setTitle(d.title);
+								setFields(d.fields);
+							}
+						}}>
+						Load draft
+					</button>
+					<span className='text-xs opacity-60'>
+						{lastSavedAt
+							? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+							: ''}
+					</span>
 				</div>
 			</div>
 
 			{mode === 'build' && (
 				<div className='grid grid-cols-1 md:grid-cols-[1fr_260px] gap-6'>
 					<div>
-						{fields.length === 0 && (
-							<div className='text-sm opacity-70 border border-dashed rounded p-6'>
-								No fields yet. Add from the right.
-							</div>
-						)}
-						<div className='flex flex-col gap-3'>
-							{fields.map((f, idx) => (
+						<div
+							onDragOver={(e) => {
+								if (e.dataTransfer.types.includes(DND_FIELD_TYPE)) {
+									e.preventDefault();
+								}
+							}}
+							onDrop={(e) => {
+								const t = e.dataTransfer.getData(DND_FIELD_TYPE) as FieldType;
+								if (t) {
+									e.preventDefault();
+									e.stopPropagation();
+									addField(t);
+								}
+							}}>
+							{fields.length === 0 && (
 								<div
-									key={f.id}
-									className='rounded border p-3 bg-background'
-									draggable
-									onDragStart={() => onDragStart(idx)}
-									onDragOver={(e) => onDragOver(e, idx)}
-									onDrop={(e) => onDrop(e, idx)}>
-									<div className='flex items-center justify-between mb-2'>
-										<input
-											className='font-medium bg-transparent border-b border-foreground/20 focus:outline-none focus:border-foreground px-1 py-0.5'
-											value={f.label}
-											onChange={(e) =>
-												updateField(f.id, { label: e.target.value })
-											}
-										/>
-										<div className='flex items-center gap-2'>
-											<label className='text-xs flex items-center gap-1'>
+									className='text-sm opacity-70 border border-dashed rounded p-6'
+									onDragOver={(e) => {
+										if (e.dataTransfer.types.includes(DND_FIELD_TYPE))
+											e.preventDefault();
+									}}
+									onDrop={(e) => {
+										const t = e.dataTransfer.getData(
+											DND_FIELD_TYPE,
+										) as FieldType;
+										if (t) {
+											e.preventDefault();
+											e.stopPropagation();
+											addField(t);
+										}
+									}}>
+									No fields yet. Add from the right.
+								</div>
+							)}
+							<div className='flex flex-col gap-3'>
+								{fields.map((f, idx) => (
+									<div
+										key={f.id}
+										className={`rounded border p-3 bg-background ${
+											hoverIndex === idx ? 'ring-2 ring-blue-400' : ''
+										}`}
+										onDragOver={(e) => onDragOver(e, idx)}
+										onDrop={(e) => onDrop(e, idx)}>
+										<div className='flex items-center justify-between mb-2'>
+											<input
+												className='font-medium bg-transparent border-b border-foreground/20 focus:outline-none focus:border-foreground px-1 py-0.5'
+												value={f.label}
+												onChange={(e) =>
+													updateField(f.id, { label: e.target.value })
+												}
+											/>
+											<div className='flex items-center gap-2'>
+												<div
+													className='text-xs px-2 py-1 rounded border cursor-move select-none'
+													draggable
+													onDragStart={(e) => onDragStart(e, idx)}
+													onDragEnd={onDragEnd}
+													aria-label='Drag to reorder'
+													title='Drag to reorder'>
+													Drag
+												</div>
+												<label className='text-xs flex items-center gap-1'>
+													<input
+														type='checkbox'
+														checked={f.required}
+														onChange={(e) =>
+															updateField(f.id, { required: e.target.checked })
+														}
+													/>
+													required
+												</label>
+												<button
+													className='text-xs px-2 py-1 rounded border'
+													onClick={() => removeField(f.id)}>
+													Delete
+												</button>
+											</div>
+										</div>
+
+										{f.type === 'text' && (
+											<div className='grid grid-cols-2 gap-2 text-sm'>
 												<input
-													type='checkbox'
-													checked={f.required}
+													className='border rounded px-2 py-1'
+													placeholder='Placeholder'
+													value={f.placeholder ?? ''}
 													onChange={(e) =>
-														updateField(f.id, { required: e.target.checked })
+														updateField(f.id, { placeholder: e.target.value })
 													}
 												/>
-												required
-											</label>
-											<button
-												className='text-xs px-2 py-1 rounded border'
-												onClick={() => removeField(f.id)}>
-												Delete
-											</button>
+												<input
+													className='border rounded px-2 py-1'
+													placeholder='Min length'
+													value={f.minLength ?? ''}
+													onChange={(e) =>
+														updateField(f.id, {
+															minLength: e.target.value
+																? Number(e.target.value)
+																: undefined,
+														})
+													}
+												/>
+												<input
+													className='border rounded px-2 py-1'
+													placeholder='Max length'
+													value={f.maxLength ?? ''}
+													onChange={(e) =>
+														updateField(f.id, {
+															maxLength: e.target.value
+																? Number(e.target.value)
+																: undefined,
+														})
+													}
+												/>
+											</div>
+										)}
+
+										{f.type === 'multipleChoice' && (
+											<div className='text-sm'>
+												<OptionEditor
+													options={f.options}
+													onChange={(options) =>
+														updateField(f.id, { options } as Partial<AnyField>)
+													}
+												/>
+											</div>
+										)}
+
+										{f.type === 'checkboxes' && (
+											<div className='text-sm grid grid-cols-2 gap-2'>
+												<OptionEditor
+													options={f.options}
+													onChange={(options) =>
+														updateField(f.id, { options } as Partial<AnyField>)
+													}
+												/>
+												<input
+													className='border rounded px-2 py-1'
+													placeholder='Min checked'
+													value={f.minChecked ?? ''}
+													onChange={(e) =>
+														updateField(f.id, {
+															minChecked: e.target.value
+																? Number(e.target.value)
+																: undefined,
+														})
+													}
+												/>
+												<input
+													className='border rounded px-2 py-1'
+													placeholder='Max checked'
+													value={f.maxChecked ?? ''}
+													onChange={(e) =>
+														updateField(f.id, {
+															maxChecked: e.target.value
+																? Number(e.target.value)
+																: undefined,
+														})
+													}
+												/>
+											</div>
+										)}
+
+										{f.type === 'rating' && (
+											<div className='text-sm grid grid-cols-2 gap-2'>
+												<input
+													className='border rounded px-2 py-1'
+													placeholder='Scale (e.g. 5)'
+													value={f.scale}
+													onChange={(e) =>
+														updateField(f.id, {
+															scale: Number(e.target.value || 0),
+														})
+													}
+												/>
+												<input
+													className='border rounded px-2 py-1'
+													placeholder='Min allowed'
+													value={f.min ?? ''}
+													onChange={(e) =>
+														updateField(f.id, {
+															min: e.target.value
+																? Number(e.target.value)
+																: undefined,
+														})
+													}
+												/>
+											</div>
+										)}
+
+										<div className='mt-3 text-xs opacity-60'>
+											Drag card to reorder
 										</div>
 									</div>
-
-									{f.type === 'text' && (
-										<div className='grid grid-cols-2 gap-2 text-sm'>
-											<input
-												className='border rounded px-2 py-1'
-												placeholder='Placeholder'
-												value={f.placeholder ?? ''}
-												onChange={(e) =>
-													updateField(f.id, { placeholder: e.target.value })
-												}
-											/>
-											<input
-												className='border rounded px-2 py-1'
-												placeholder='Min length'
-												value={f.minLength ?? ''}
-												onChange={(e) =>
-													updateField(f.id, {
-														minLength: e.target.value
-															? Number(e.target.value)
-															: undefined,
-													})
-												}
-											/>
-											<input
-												className='border rounded px-2 py-1'
-												placeholder='Max length'
-												value={f.maxLength ?? ''}
-												onChange={(e) =>
-													updateField(f.id, {
-														maxLength: e.target.value
-															? Number(e.target.value)
-															: undefined,
-													})
-												}
-											/>
-										</div>
-									)}
-
-									{f.type === 'multipleChoice' && (
-										<div className='text-sm'>
-											<OptionEditor
-												options={f.options}
-												onChange={(options) =>
-													updateField(f.id, { options } as Partial<AnyField>)
-												}
-											/>
-										</div>
-									)}
-
-									{f.type === 'checkboxes' && (
-										<div className='text-sm grid grid-cols-2 gap-2'>
-											<OptionEditor
-												options={f.options}
-												onChange={(options) =>
-													updateField(f.id, { options } as Partial<AnyField>)
-												}
-											/>
-											<input
-												className='border rounded px-2 py-1'
-												placeholder='Min checked'
-												value={f.minChecked ?? ''}
-												onChange={(e) =>
-													updateField(f.id, {
-														minChecked: e.target.value
-															? Number(e.target.value)
-															: undefined,
-													})
-												}
-											/>
-											<input
-												className='border rounded px-2 py-1'
-												placeholder='Max checked'
-												value={f.maxChecked ?? ''}
-												onChange={(e) =>
-													updateField(f.id, {
-														maxChecked: e.target.value
-															? Number(e.target.value)
-															: undefined,
-													})
-												}
-											/>
-										</div>
-									)}
-
-									{f.type === 'rating' && (
-										<div className='text-sm grid grid-cols-2 gap-2'>
-											<input
-												className='border rounded px-2 py-1'
-												placeholder='Scale (e.g. 5)'
-												value={f.scale}
-												onChange={(e) =>
-													updateField(f.id, {
-														scale: Number(e.target.value || 0),
-													})
-												}
-											/>
-											<input
-												className='border rounded px-2 py-1'
-												placeholder='Min allowed'
-												value={f.min ?? ''}
-												onChange={(e) =>
-													updateField(f.id, {
-														min: e.target.value
-															? Number(e.target.value)
-															: undefined,
-													})
-												}
-											/>
-										</div>
-									)}
-
-									<div className='mt-3 text-xs opacity-60'>
-										Drag card to reorder
-									</div>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
-					</div>
 
-					<div className='sticky top-4 h-fit'>
-						<div className='border rounded p-3'>
-							<div className='font-medium mb-2'>Add field</div>
-							<div className='grid grid-cols-2 gap-2'>
-								<button
-									className='px-2 py-1 rounded border'
-									onClick={() => addField('text')}>
-									Text
-								</button>
-								<button
-									className='px-2 py-1 rounded border'
-									onClick={() => addField('multipleChoice')}>
-									Multiple
-								</button>
-								<button
-									className='px-2 py-1 rounded border'
-									onClick={() => addField('checkboxes')}>
-									Checkboxes
-								</button>
-								<button
-									className='px-2 py-1 rounded border'
-									onClick={() => addField('rating')}>
-									Rating
-								</button>
+						<div className='sticky top-4 h-fit'>
+							<div className='border rounded p-3'>
+								<div className='font-medium mb-2'>Add field</div>
+								<div className='grid grid-cols-2 gap-2'>
+									<button
+										className='px-2 py-1 rounded border'
+										draggable
+										onDragStart={(e) =>
+											e.dataTransfer.setData(DND_FIELD_TYPE, 'text')
+										}
+										onClick={() => addField('text')}>
+										Text
+									</button>
+									<button
+										className='px-2 py-1 rounded border'
+										draggable
+										onDragStart={(e) =>
+											e.dataTransfer.setData(DND_FIELD_TYPE, 'multipleChoice')
+										}
+										onClick={() => addField('multipleChoice')}>
+										Multiple
+									</button>
+									<button
+										className='px-2 py-1 rounded border'
+										draggable
+										onDragStart={(e) =>
+											e.dataTransfer.setData(DND_FIELD_TYPE, 'checkboxes')
+										}
+										onClick={() => addField('checkboxes')}>
+										Checkboxes
+									</button>
+									<button
+										className='px-2 py-1 rounded border'
+										draggable
+										onDragStart={(e) =>
+											e.dataTransfer.setData(DND_FIELD_TYPE, 'rating')
+										}
+										onClick={() => addField('rating')}>
+										Rating
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
