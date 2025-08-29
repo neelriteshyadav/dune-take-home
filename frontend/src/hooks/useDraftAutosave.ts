@@ -3,49 +3,48 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnyField, FormDraft } from '@/lib/types';
-import { saveDraft } from '@/lib/storage';
+import { createForm, updateForm } from '@/lib/api';
 
-/**
- * Autosave the builder draft (title + fields) to localStorage.
- * - Debounced by `delay` ms
- * - Returns lastSavedAt, plus manual save/clear helpers
- */
+type Opts = { delay?: number; enabled?: boolean };
+
 export default function useDraftAutosave(
-	draftInput: { title: string; fields: AnyField[]; id?: string },
-	options?: { delay?: number; enabled?: boolean },
+	draft: { title: string; fields: AnyField[]; id?: string | null },
+	opts?: Opts,
 ) {
-	const { delay = 400, enabled = true } = options ?? {};
+	const { delay = 600, enabled = true } = opts ?? {};
 	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+	const [formId, setFormId] = useState<string | null>(draft.id ?? null);
 	const timer = useRef<number | null>(null);
 
-	const saveNow = () => {
-		const payload: Omit<FormDraft, 'updatedAt'> = {
-			id: draftInput.id ?? 'local',
-			title: draftInput.title,
-			fields: draftInput.fields,
-		};
-		saveDraft(payload);
-		setLastSavedAt(Date.now());
-	};
-
-	const clearTimer = () => {
-		if (timer.current) {
-			window.clearTimeout(timer.current);
-			timer.current = null;
+	const saveNow = async () => {
+		if (!enabled) return;
+		const payload = { title: draft.title, fields: draft.fields } as Omit<
+			FormDraft,
+			'updatedAt'
+		>;
+		try {
+			const saved = formId
+				? await updateForm(formId, payload as any)
+				: await createForm(payload as any);
+			setFormId(saved.id);
+			setLastSavedAt(Date.now());
+		} catch (e) {
+			// You could surface a toast here
+			console.error('Autosave failed:', e);
 		}
 	};
 
 	useEffect(() => {
 		if (!enabled) return;
-
-		clearTimer();
-		timer.current = window.setTimeout(saveNow, delay);
-
+		if (timer.current) window.clearTimeout(timer.current);
+		timer.current = window.setTimeout(() => {
+			void saveNow();
+		}, delay);
 		return () => {
-			clearTimer();
+			if (timer.current) window.clearTimeout(timer.current);
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [draftInput.title, draftInput.fields, delay, enabled]);
+	}, [draft.title, draft.fields, enabled, delay]);
 
-	return { lastSavedAt, saveNow, clearTimer };
+	return { formId, lastSavedAt, saveNow, setFormId };
 }

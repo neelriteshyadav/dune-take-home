@@ -1,57 +1,90 @@
 /** @format */
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
-import { AnyField, FormAnswers, FormDraft } from '@/lib/types';
+import { useMemo, useState } from 'react';
+import { AnyField, FormAnswers } from '@/lib/types';
 import { createField } from '@/lib/factory';
 import { validateAnswers } from '@/lib/validation';
-import { saveDraft, loadDraft, clearDraft, publishForm } from '@/lib/storage';
 import BuilderTopBar from '@/components/builder/BuilderTopBar';
 import FormBuilderCanvas from '@/components/builder/FormBuilderCanvas';
 import Palette from '@/components/builder/Palette';
 import FieldInput from '@/components/fields/FieldInput';
+import useDraftAutosave from '@/hooks/useDraftAutosave';
+import { getForm } from '@/lib/api'; // 👈 NEW
+
+function extractFormId(input: string): string | null {
+	if (!input) return null;
+	let s = input.trim();
+
+	// If it's a URL, use pathname
+	try {
+		const u = new URL(s);
+		s = u.pathname;
+	} catch {
+		// not a URL, keep as-is
+	}
+
+	// Try /form/<id> (with or without /analytics)
+	const m = s.match(/\/form\/([a-f0-9]{24})/i);
+	if (m?.[1]) return m[1];
+
+	// Plain 24-hex id
+	if (/^[a-f0-9]{24}$/i.test(s)) return s;
+
+	return null;
+}
 
 export default function BuilderPage() {
 	const [title, setTitle] = useState('Untitled Form');
-	const [fields, setFields] = useState<AnyField[]>(
-		() => loadDraft()?.fields ?? [],
-	);
+	const [fields, setFields] = useState<AnyField[]>([]);
 	const [answers, setAnswers] = useState<FormAnswers>({});
 	const [mode, setMode] = useState<'build' | 'preview'>('build');
-	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-	const [shareUrl, setShareUrl] = useState<string | null>(null);
-	const saveTimer = useRef<number | null>(null);
 
-	const draft: Omit<FormDraft, 'updatedAt'> = useMemo(
-		() => ({ id: 'local', title, fields }),
-		[title, fields],
+	const { formId, lastSavedAt, saveNow, setFormId } = useDraftAutosave(
+		{ id: null, title, fields },
+		{ delay: 600 },
 	);
+
 	const errors = useMemo(
 		() => validateAnswers(fields, answers),
 		[fields, answers],
 	);
 
-	const onSaveDraft = () => {
-		saveDraft(draft);
-		setLastSavedAt(Date.now());
-	};
-	const onLoadDraft = () => {
-		const d = loadDraft();
-		if (d) {
-			setTitle(d.title);
-			setFields(d.fields);
-		}
-	};
+	const shareUrl =
+		typeof window !== 'undefined' && (formId ?? '').length > 0
+			? `${window.location.origin}/form/${formId}`
+			: null;
+
 	const onClear = () => {
 		setTitle('Untitled Form');
 		setFields([]);
 		setAnswers({});
-		clearDraft();
+		// keep current formId so continuing edits stay tied to same doc; or call setFormId(null) to start a new one.
 	};
-	const onPublish = () => {
-		const id = publishForm({ title, fields });
-		const origin = typeof window !== 'undefined' ? window.location.origin : '';
-		setShareUrl(`${origin}/form/${id}`);
+
+	const onPublish = async () => {
+		await saveNow();
+		// shareUrl is derived from formId
+	};
+
+	const onLoadDraft = async () => {
+		const input = window.prompt('Enter a Form ID or paste the form URL');
+		if (!input) return;
+		const id = extractFormId(input);
+		if (!id) {
+			alert('Could not parse a valid Form ID from your input.');
+			return;
+		}
+		try {
+			const f = await getForm(id);
+			setTitle(f.title);
+			setFields(f.fields as AnyField[]);
+			setFormId(f.id); // 👈 ensure future autosaves do PUT to this form
+			setMode('build');
+		} catch (e) {
+			console.error(e);
+			alert('Form not found or server error.');
+		}
 	};
 
 	return (
@@ -61,7 +94,6 @@ export default function BuilderPage() {
 				setTitle={setTitle}
 				mode={mode}
 				setMode={setMode}
-				onSaveDraft={onSaveDraft}
 				onLoadDraft={onLoadDraft}
 				onClear={onClear}
 				onPublish={onPublish}
@@ -84,8 +116,8 @@ export default function BuilderPage() {
 					{fields.map((f) => (
 						<div
 							key={f.id}
-							className='border rounded-lg p-3'>
-							<div className='mb-2 font-medium flex items-center gap-2'>
+							className='border rounded-lg p-3 bg-zinc-900 border-zinc-700'>
+							<div className='mb-2 font-medium flex items-center gap-2 text-zinc-100'>
 								<span>{f.label}</span>
 								{f.required && <span className='text-red-500 text-xs'>*</span>}
 							</div>
@@ -97,7 +129,7 @@ export default function BuilderPage() {
 								}
 							/>
 							{errors[f.id] && (
-								<div className='text-xs text-red-600 mt-1'>{errors[f.id]}</div>
+								<div className='text-xs text-red-400 mt-1'>{errors[f.id]}</div>
 							)}
 						</div>
 					))}

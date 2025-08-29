@@ -3,19 +3,31 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FormDoc } from '@/lib/types';
-import { loadFormById } from '@/lib/storage';
-import { useLiveResponses } from '@/hooks/useLiveResponses';
+import { getForm } from '@/lib/api';
+import type { FormDoc } from '@/lib/types';
+import useLiveAnalytics from '@/hooks/useLiveAnalytics';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 
 export default function AnalyticsPage() {
 	const { formId } = useParams<{ formId: string }>();
 	const [form, setForm] = useState<FormDoc | null>(null);
-	const responses = useLiveResponses(formId, 1500);
+	const analytics = useLiveAnalytics(formId);
 
 	useEffect(() => {
-		setForm(loadFormById(formId) ?? null);
+		let alive = true;
+		(async () => {
+			try {
+				const f = await getForm(formId);
+				if (alive) setForm(f);
+			} catch {
+				if (alive) setForm(null);
+			}
+		})();
+		return () => {
+			alive = false;
+		};
 	}, [formId]);
+
 	if (!form)
 		return <div className='p-6 max-w-3xl mx-auto'>Form not found.</div>;
 
@@ -24,8 +36,7 @@ export default function AnalyticsPage() {
 			<AnalyticsDashboard
 				formId={form.id}
 				title={form.title}
-				fields={form.fields}
-				responses={responses}
+				analytics={analytics}
 			/>
 		</div>
 	);

@@ -8,7 +8,6 @@ type Props = {
 	setTitle: (v: string) => void;
 	mode: 'build' | 'preview';
 	setMode: (m: 'build' | 'preview') => void;
-	onSaveDraft: () => void;
 	onLoadDraft: () => void;
 	onClear: () => void;
 	onPublish: () => void;
@@ -21,7 +20,6 @@ export default function BuilderTopBar({
 	setTitle,
 	mode,
 	setMode,
-	onSaveDraft,
 	onLoadDraft,
 	onClear,
 	onPublish,
@@ -63,9 +61,8 @@ export default function BuilderTopBar({
 					{btn('Build', mode === 'build', () => setMode('build'))}
 					{btn('Preview', mode === 'preview', () => setMode('preview'))}
 					{btn('Clear', false, onClear)}
-					{btn('Save draft', false, onSaveDraft)}
-					{btn('Load draft', false, onLoadDraft)}
 					{btn('Publish', false, onPublish)}
+					{btn('Edit Form', false, onLoadDraft)}
 				</div>
 			</div>
 

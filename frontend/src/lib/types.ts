@@ -69,3 +69,46 @@ export interface FormResponse {
 	submittedAt: number;
 	answers: FormAnswers;
 }
+// --- Server analytics payloads ---
+export interface ServerBar {
+	label: string;
+	value: number;
+}
+
+export interface ServerFieldAnalytics {
+	fieldId: string;
+	label: string;
+	type: FieldType | string;
+	summary: string;
+	bars: ServerBar[];
+	average?: number;
+	scale?: number;
+	responseN: number;
+}
+
+export interface ServerAnalytics {
+	formId: string;
+	responseCount: number;
+	lastResponseMs: number;
+	perField: ServerFieldAnalytics[];
+}
+// --- Server analytics payloads ---
+export interface ServerBar { label: string; value: number }
+
+export interface ServerFieldAnalytics {
+  fieldId: string;
+  label: string;
+  type: FieldType | string;
+  summary: string;
+  bars: ServerBar[];
+  average?: number;
+  scale?: number;
+  responseN: number;
+}
+
+export interface ServerAnalytics {
+  formId: string;
+  responseCount: number;
+  lastResponseMs: number;
+  perField: ServerFieldAnalytics[];
+}
