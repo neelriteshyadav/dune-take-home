@@ -3,54 +3,67 @@
 export type FieldType = 'text' | 'multipleChoice' | 'checkboxes' | 'rating';
 
 export interface BaseField {
-	id: string;
-	label: string;
-	type: FieldType;
-	required: boolean;
+  id: string;
+  label: string;
+  type: FieldType;
+  required: boolean;
 }
 
 export interface TextField extends BaseField {
-	type: 'text';
-	placeholder?: string;
-	minLength?: number;
-	maxLength?: number;
+  type: 'text';
+  placeholder?: string;
+  minLength?: number;
+  maxLength?: number;
 }
 
 export interface MultipleChoiceField extends BaseField {
-	type: 'multipleChoice';
-	options: string[];
+  type: 'multipleChoice';
+  options: string[];
 }
 
 export interface CheckboxesField extends BaseField {
-	type: 'checkboxes';
-	options: string[];
-	minChecked?: number;
-	maxChecked?: number;
+  type: 'checkboxes';
+  options: string[];
+  minChecked?: number;
+  maxChecked?: number;
 }
 
 export interface RatingField extends BaseField {
-	type: 'rating';
-	scale: number; // number of stars
-	min?: number; // minimum allowed rating
+  type: 'rating';
+  scale: number; // number of stars
+  min?: number; // minimum allowed rating
 }
 
-export type AnyField =
-	| TextField
-	| MultipleChoiceField
-	| CheckboxesField
-	| RatingField;
+export type AnyField = TextField | MultipleChoiceField | CheckboxesField | RatingField;
 
 export interface FormDraft {
-	id: string;
-	title: string;
-	fields: AnyField[];
-	updatedAt: number;
+  id: string;
+  title: string;
+  fields: AnyField[];
+  updatedAt: number;
 }
 
 export interface ValidationErrorMap {
-	[fieldId: string]: string | undefined;
+  [fieldId: string]: string | undefined;
 }
 
 export interface FormAnswers {
-	[fieldId: string]: unknown;
+  [fieldId: string]: unknown;
+}
+
+/** Published form (shareable) */
+export interface FormDoc {
+  id: string;
+  title: string;
+  fields: AnyField[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Stored response for a given form */
+export interface FormResponse {
+  id: string;
+  formId: string;
+  submittedAt: number;
+  answers: FormAnswers;
 }
