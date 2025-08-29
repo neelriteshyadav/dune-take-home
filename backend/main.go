@@ -10,85 +10,53 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"backend/api"
+	"backend/db"
 )
 
-var client *mongo.Client
-
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
-	}
+	_ = godotenv.Load()
 
-	// Connect to MongoDB
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	mongoURI := os.Getenv("MONGODB_URI")
-	if mongoURI == "" {
-		mongoURI = "mongodb://localhost:27017"
-	}
-
-	clientOptions := options.Client().ApplyURI(mongoURI)
-	var err error
-	client, err = mongo.Connect(ctx, clientOptions)
-	if err != nil {
+	if err := db.Connect(os.Getenv("MONGODB_URI"), os.Getenv("DB_NAME")); err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = db.Client().Disconnect(ctx)
+	}()
 
-	// Check the connection
-	err = client.Ping(ctx, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("Connected to MongoDB!")
-
-	// Create Fiber app
 	app := fiber.New(fiber.Config{
+		AppName: "Form Builder API",
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {
 				code = e.Code
 			}
-			return c.Status(code).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			log.Printf("ERROR %d %s %v", code, c.Path(), err)
+			return c.Status(code).JSON(fiber.Map{"error": err.Error()})
 		},
 	})
 
-	// Middleware
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3000",
+		AllowOrigins: "*", // change to your frontend origin in prod
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: "GET, POST, PUT, DELETE",
+		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 	}))
 
-	// Routes
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Form Builder API is running!",
-			"status":  "success",
-		})
-	})
-
-	// Health check
+	app.Get("/", func(c *fiber.Ctx) error { return c.JSON(fiber.Map{"ok": true}) })
 	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status": "healthy",
-			"timestamp": time.Now(),
-		})
+		return c.JSON(fiber.Map{"status": "healthy", "ts": time.Now().UTC()})
 	})
 
-	// Start server
+	api.Register(app.Group("/api"))
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
-	log.Printf("Server starting on port %s", port)
+	log.Printf("Form Builder API listening on :%s", port)
 	log.Fatal(app.Listen(":" + port))
 }
