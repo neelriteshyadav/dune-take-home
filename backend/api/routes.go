@@ -16,9 +16,13 @@ func Register(r fiber.Router) {
 	forms.Get("/:id", GetForm)
 	forms.Put("/:id", UpdateForm)
 
-	forms.Post("/:id/responses", SubmitResponse) // notifies hub
+	forms.Post("/:id/responses", SubmitResponse)
 	forms.Get("/:id/responses", ListResponses)
 
+	// NEW: exports
+	forms.Get("/:id/responses/export.csv", ExportResponsesCSV)
+	forms.Get("/:id/responses/export.pdf", ExportResponsesPDF)
+
 	forms.Get("/:id/analytics", GetAnalytics)
-	forms.Get("/:id/analytics/longpoll", LongPollAnalytics) // live updates
+	forms.Get("/:id/analytics/longpoll", LongPollAnalytics)
 }

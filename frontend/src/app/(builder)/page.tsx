@@ -10,25 +10,25 @@ import FormBuilderCanvas from '@/components/builder/FormBuilderCanvas';
 import Palette from '@/components/builder/Palette';
 import FieldInput from '@/components/fields/FieldInput';
 import useDraftAutosave from '@/hooks/useDraftAutosave';
-import { getForm } from '@/lib/api'; // 👈 NEW
+import { getForm } from '@/lib/api';
 
 function extractFormId(input: string): string | null {
 	if (!input) return null;
 	let s = input.trim();
 
-	// If it's a URL, use pathname
+	// Try URL
 	try {
 		const u = new URL(s);
 		s = u.pathname;
 	} catch {
-		// not a URL, keep as-is
+		// not a URL
 	}
 
-	// Try /form/<id> (with or without /analytics)
+	// /form/<id> or /form/<id>/analytics
 	const m = s.match(/\/form\/([a-f0-9]{24})/i);
 	if (m?.[1]) return m[1];
 
-	// Plain 24-hex id
+	// bare 24-hex id
 	if (/^[a-f0-9]{24}$/i.test(s)) return s;
 
 	return null;
@@ -59,12 +59,13 @@ export default function BuilderPage() {
 		setTitle('Untitled Form');
 		setFields([]);
 		setAnswers({});
-		// keep current formId so continuing edits stay tied to same doc; or call setFormId(null) to start a new one.
+		// keep formId; if you want a brand-new form doc, uncomment:
+		// setFormId(null);
 	};
 
 	const onPublish = async () => {
-		await saveNow();
-		// shareUrl is derived from formId
+		await saveNow(); // ensures latest autosave persisted
+		// shareUrl already reflects the id
 	};
 
 	const onLoadDraft = async () => {
@@ -72,14 +73,14 @@ export default function BuilderPage() {
 		if (!input) return;
 		const id = extractFormId(input);
 		if (!id) {
-			alert('Could not parse a valid Form ID from your input.');
+			alert('Could not parse a valid Form ID.');
 			return;
 		}
 		try {
 			const f = await getForm(id);
 			setTitle(f.title);
 			setFields(f.fields as AnyField[]);
-			setFormId(f.id); // 👈 ensure future autosaves do PUT to this form
+			setFormId(f.id); // future autosaves will PUT this form
 			setMode('build');
 		} catch (e) {
 			console.error(e);
@@ -116,8 +117,8 @@ export default function BuilderPage() {
 					{fields.map((f) => (
 						<div
 							key={f.id}
-							className='border rounded-lg p-3 bg-zinc-900 border-zinc-700'>
-							<div className='mb-2 font-medium flex items-center gap-2 text-zinc-100'>
+							className='border rounded-lg p-3 card'>
+							<div className='mb-2 font-medium flex items-center gap-2 text-app'>
 								<span>{f.label}</span>
 								{f.required && <span className='text-red-500 text-xs'>*</span>}
 							</div>

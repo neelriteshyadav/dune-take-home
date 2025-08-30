@@ -33,59 +33,73 @@ export default function BuilderTopBar({
 		} catch {}
 	};
 
-	const btn = (label: string, active: boolean, onClick: () => void) => (
-		<button
-			type='button'
-			className={[
-				'px-3 py-1 rounded border transition',
-				'border-zinc-700 text-zinc-200 hover:bg-zinc-800',
-				active ? 'bg-zinc-100 text-zinc-900' : '',
-			].join(' ')}
-			onClick={onClick}
-			aria-pressed={active}>
-			{label}
-		</button>
-	);
-
 	return (
 		<div className='mb-6'>
 			<div className='flex items-start justify-between gap-3'>
 				<input
 					className='text-2xl font-semibold bg-transparent border-b px-1 py-1 w-full
-                     border-zinc-700 focus:outline-none focus:border-zinc-300 text-zinc-50 placeholder-zinc-400'
+                     border-app focus:outline-none focus:border-app text-app placeholder:text-muted'
 					value={title}
 					onChange={(e) => setTitle(e.target.value)}
-					placeholder='Form title'
+					placeholder='Untitled Form'
 				/>
 				<div className='flex flex-wrap gap-2 items-center justify-end'>
-					{btn('Build', mode === 'build', () => setMode('build'))}
-					{btn('Preview', mode === 'preview', () => setMode('preview'))}
-					{btn('Clear', false, onClear)}
-					{btn('Publish', false, onPublish)}
-					{btn('Edit Form', false, onLoadDraft)}
+					<button
+						type='button'
+						className={`btn btn-outline ${
+							mode === 'build' ? 'btn-active' : ''
+						}`}
+						onClick={() => setMode('build')}>
+						Build
+					</button>
+					<button
+						type='button'
+						className={`btn btn-outline ${
+							mode === 'preview' ? 'btn-active' : ''
+						}`}
+						onClick={() => setMode('preview')}>
+						Preview
+					</button>
+					<button
+						type='button'
+						className='btn btn-outline'
+						onClick={onLoadDraft}>
+						Load draft
+					</button>
+					<button
+						type='button'
+						className='btn'
+						onClick={onPublish}>
+						Publish
+					</button>
+					<button
+						type='button'
+						className='btn btn-ghost'
+						onClick={onClear}>
+						Clear
+					</button>
 				</div>
 			</div>
 
 			{shareUrl && (
-				<div className='mt-3 border rounded-lg p-3 bg-zinc-900 border-zinc-700'>
-					<div className='text-sm font-medium mb-1 text-zinc-200'>
+				<div className='mt-3 border rounded-lg p-3 card'>
+					<div className='text-sm font-medium mb-1 text-app'>
 						Shareable link
 					</div>
 					<div className='flex gap-2'>
 						<input
-							className='border rounded px-2 py-1 w-full text-sm bg-transparent
-                         border-zinc-700 text-zinc-200'
+							className='input'
 							value={shareUrl}
 							readOnly
 						/>
 						<button
 							type='button'
-							className='px-3 py-1 rounded border shrink-0 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
+							className='btn shrink-0'
 							onClick={copy}>
 							Copy
 						</button>
 					</div>
-					<div className='mt-1 text-xs text-zinc-400'>
+					<div className='mt-1 text-xs text-muted'>
 						Fill: <code className='px-1'>{shareUrl}</code> · Analytics:{' '}
 						<a
 							className='underline'
@@ -98,7 +112,7 @@ export default function BuilderTopBar({
 				</div>
 			)}
 
-			<div className='mt-2 text-xs text-zinc-400 h-4'>
+			<div className='mt-2 text-xs text-muted h-4'>
 				{lastSavedAt
 					? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
 					: ''}

@@ -31,7 +31,7 @@ export default function FillFormPage() {
 	}, [formId]);
 
 	const errors = useMemo(
-		() => validateAnswers(form?.fields ?? ([] as AnyField[]), answers),
+		() => validateAnswers((form?.fields ?? []) as AnyField[], answers),
 		[form, answers],
 	);
 
@@ -39,7 +39,7 @@ export default function FillFormPage() {
 		return <div className='p-6 max-w-3xl mx-auto'>Form not found.</div>;
 
 	const onSubmit = async () => {
-		const errs = validateAnswers(form.fields, answers);
+		const errs = validateAnswers(form.fields as AnyField[], answers);
 		if (Object.keys(errs).length) return;
 		setSubmitting(true);
 		try {
@@ -54,34 +54,38 @@ export default function FillFormPage() {
 
 	return (
 		<div className='p-6 max-w-3xl mx-auto'>
-			<h1 className='text-xl font-semibold mb-4 text-zinc-100'>{form.title}</h1>
+			<h1 className='text-xl font-semibold mb-4 text-app'>{form.title}</h1>
+
 			<div className='flex flex-col gap-4'>
 				{form.fields.map((f) => (
 					<div
 						key={f.id}
-						className='border rounded-lg p-3 bg-zinc-900 border-zinc-700'>
-						<div className='mb-2 font-medium flex items-center gap-2 text-zinc-100'>
+						className='border rounded-lg p-3 card'>
+						<div className='mb-2 font-medium flex items-center gap-2 text-app'>
 							<span>{f.label}</span>
 							{f.required && <span className='text-red-500 text-xs'>*</span>}
 						</div>
+
 						<FieldInput
-							field={f}
+							field={f as AnyField}
 							value={answers[f.id]}
 							onChange={(v) => setAnswers((s) => ({ ...s, [f.id]: v }))}
 						/>
+
 						{errors[f.id] && (
 							<div className='text-xs text-red-400 mt-1'>{errors[f.id]}</div>
 						)}
 					</div>
 				))}
+
 				<div className='flex items-center gap-3'>
 					<button
-						className='px-3 py-2 rounded border border-zinc-700 text-zinc-200 hover:bg-zinc-800 disabled:opacity-50'
+						className='px-3 py-2 rounded border border-app text-app hover:opacity-90 disabled:opacity-50'
 						onClick={onSubmit}
 						disabled={submitting}>
 						{submitting ? 'Submitting…' : 'Submit response'}
 					</button>
-					{msg && <span className='text-sm text-zinc-300'>{msg}</span>}
+					{msg && <span className='text-sm text-muted'>{msg}</span>}
 				</div>
 			</div>
 		</div>

@@ -1,9 +1,102 @@
 @import "tailwindcss";
 
+/* ---------- THEME ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #ffffff;           /* page background */
+  --fg: #0f172a;           /* text (slate-900) */
+  --muted: #475569;        /* secondary text (slate-600) */
+  --card-bg: #ffffff;      /* card surface */
+  --card-border: #e5e7eb;  /* gray-200 */
+  --link: #1d4ed8;         /* blue-700 */
+  --shadow: 0 1px 2px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.06);
+
+  /* Buttons */
+  --btn-bg: #0f172a;       /* solid button bg (slate-900) */
+  --btn-fg: #ffffff;       /* solid button fg */
+  --btn-border: #0f172a;
+  --btn-bg-hover: #1f2937;
+
+  --btn-outline-fg: #0f172a;
+  --btn-outline-border: #0f172a;
+  --btn-outline-hover-bg: #f3f4f6;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-fg: #0f172a;
+  --input-border: #d1d5db; /* gray-300 */
+  --input-placeholder: #9ca3af;
+
+  --ring: #2563eb33;       /* blue focus ring */
 }
+
+:root[data-theme="dark"] {
+  --bg: #0a0a0a;           /* zinc-950 */
+  --fg: #e5e7eb;           /* zinc-200 */
+  --muted: #a1a1aa;        /* zinc-400 */
+  --card-bg: #0f1115;      /* near zinc-900 */
+  --card-border: #3f3f46;  /* zinc-700 */
+  --link: #93c5fd;         /* blue-300 */
+  --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.35);
+
+  --btn-bg: #e5e7eb;
+  --btn-fg: #0a0a0a;
+  --btn-border: #e5e7eb;
+  --btn-bg-hover: #f3f4f6;
+
+  --btn-outline-fg: #e5e7eb;
+  --btn-outline-border: #3f3f46;
+  --btn-outline-hover-bg: #18181b;
+
+  --input-bg: #0f1115;
+  --input-fg: #e5e7eb;
+  --input-border: #3f3f46;
+  --input-placeholder: #71717a;
+
+  --ring: #60a5fa33;
+}
+
+/* ---------- Utilities ---------- */
+.bg-app     { background-color: var(--bg); }
+.text-app   { color: var(--fg); }
+.text-muted { color: var(--muted); }
+.card       { background-color: var(--card-bg); border-color: var(--card-border); box-shadow: var(--shadow); }
+.border-app { border-color: var(--card-border); }
+a { color: var(--link); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.375rem 0.75rem; border-radius: 0.5rem;
+  border: 1px solid var(--btn-border);
+  color: var(--btn-fg); background: var(--btn-bg);
+  font-weight: 500; transition: background .15s, opacity .15s, box-shadow .15s;
+}
+.btn:hover { background: var(--btn-bg-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-outline {
+  background: transparent; color: var(--btn-outline-fg); border-color: var(--btn-outline-border);
+}
+.btn-outline:hover { background: var(--btn-outline-hover-bg); }
+.btn-ghost {
+  background: transparent; color: var(--muted); border-color: var(--card-border);
+}
+.btn-ghost:hover { background: var(--card-border); }
+.btn-active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Inputs */
+.input, .textarea {
+  width: 100%;
+  background: var(--input-bg); color: var(--input-fg);
+  border: 1px solid var(--input-border); border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+.input::placeholder, .textarea::placeholder { color: var(--input-placeholder); }
+.input:focus, .textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--ring); border-color: #2563eb; }
+
+/* Minor */
+.section-title { font-weight: 600; color: var(--fg); }
+.small { font-size: 0.8125rem; }
+
 
 @theme inline {
   --color-background: var(--background);
