@@ -39,11 +39,6 @@ func main() {
 		},
 	})
 
-	allowed := os.Getenv("ALLOWED_ORIGINS")
-	if allowed == "" {
-		allowed = "http://localhost:3000"
-	}
-
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*", // change to your frontend origin in prod
