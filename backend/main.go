@@ -41,7 +41,7 @@ func main() {
 
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", // change to your frontend origin in prod
+		AllowOrigins: os.Getenv("CORS_ORIGIN"), // change to your frontend origin in prod
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 	}))

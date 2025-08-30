@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: form-builder-backend
+    runtime: go
+    plan: free
+    buildCommand: "go build -o bin/server main.go"
+    startCommand: "./bin/server"
+    envVars:
+      - key: MONGODB_URI
+        fromDatabase:
+          name: form-builder-db
+          property: connectionString
+      - key: DB_NAME
+        value: form-builder
+      - key: CORS_ORIGIN
+        # Replace with your frontend URL
+        value: https://your-frontend-url.vercel.app
+
+databases:
+  - name: form-builder-db
+    plan: free
+    databaseName: form-builder

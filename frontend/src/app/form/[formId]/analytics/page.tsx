@@ -36,7 +36,7 @@ export default function AnalyticsPage() {
 			<AnalyticsDashboard
 				formId={form.id}
 				title={form.title}
-				analytics={analytics}
+				analytics={analytics.data}
 			/>
 		</div>
 	);
