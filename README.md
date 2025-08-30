@@ -1,216 +1,83 @@
-<!-- @format -->
+# Form Builder
 
-# Form Builder Application
+A full-stack form builder application with a React-based frontend and a Go backend. This project allows users to create custom forms, share them with others, and view real-time analytics of the responses.
 
-A dynamic, customizable form builder application that allows users to create forms, collect responses, and view live analytics about the responses in real time.
+## Live Demo
 
-## Features
+*   **Frontend (Vercel):** [https://dune-take-home.vercel.app/](https://dune-take-home.vercel.app/)
+*   **Backend (Render):** [https://dune-take-home-backend.onrender.com](https://dune-take-home-backend.onrender.com)
 
-- **Dynamic Form Builder**: Create custom forms with various field types
-- **Real-time Analytics**: Live dashboard showing form responses and insights
-- **Flexible Data Storage**: MongoDB-based storage for forms and responses
-- **Modern UI**: Built with Next.js and TailwindCSS
-- **RESTful API**: Go Fiber backend for handling form operations
+## Local Setup
 
-## Tech Stack
-
-### Frontend
-
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **TailwindCSS** - Utility-first CSS framework
-- **React Hook Form** - Form handling and validation
+To set up the project locally, you will need to have Node.js and Go installed.
 
 ### Backend
 
-- **Go** - High-performance server language
-- **Fiber** - Fast HTTP web framework
-- **MongoDB Driver** - Official Go MongoDB driver
+1.  **Navigate to the `backend` directory:**
+    ```bash
+    cd backend
+    ```
 
-### Database
+2.  **Install dependencies:**
+    ```bash
+    go mod tidy
+    ```
 
-- **MongoDB** - NoSQL database for flexible data storage
-- **Mongo Express** - Web-based MongoDB admin interface
+3.  **Create a `.env` file:**
+    Create a `.env` file in the `backend` directory and add the following environment variables:
+    ```
+    MONGODB_URI=<your_mongodb_connection_string>
+    DB_NAME=<your_database_name>
+    CORS_ORIGIN=http://localhost:3000
+    ```
 
-## Project Structure
+4.  **Run the backend server:**
+    ```bash
+    go run main.go
+    ```
+    The backend will be running at `http://localhost:8080`.
 
-```
-dune-take-home/
-├── frontend/           # Next.js frontend application
-├── backend/            # Go Fiber backend API
-├── docker-compose.yml  # MongoDB and Mongo Express setup
-├── mongo-init.js      # MongoDB initialization script
-└── README.md          # This file
-```
+### Frontend
 
-## Prerequisites
+1.  **Navigate to the `frontend` directory:**
+    ```bash
+    cd frontend
+    ```
 
-- **Node.js** (v18 or higher)
-- **Go** (v1.21 or higher)
-- **Docker** and **Docker Compose**
-- **Git**
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-## Setup Instructions
+3.  **Create a `.env.local` file:**
+    Create a `.env.local` file in the `frontend` directory and add the following environment variable:
+    ```
+    NEXT_PUBLIC_API_BASE=http://localhost:8080
+    ```
 
-### 1. Clone and Navigate to Project
+4.  **Run the frontend development server:**
+    ```bash
+    npm run dev
+    ```
+    The frontend will be running at `http://localhost:3000`.
 
-```bash
-cd dune-take-home
-```
+## Assumptions and Challenges
 
-### 2. Start MongoDB
+### Assumptions
 
-```bash
-docker-compose up -d
-```
+*   **MongoDB:** I assumed that MongoDB would be a suitable database for this project due to its flexible schema, which is well-suited for storing form data and responses.
+*   **Real-time Analytics:** I assumed that a long-polling approach would be sufficient for the real-time analytics feature, providing a good balance between real-time updates and server resources.
 
-This will start:
+### Challenges
 
-- MongoDB on port 27017
-- Mongo Express (admin interface) on port 8081
+*   **Deployment:** The initial deployment to Render failed due to the MongoDB Atlas IP access list not being configured to allow connections from Render's IP addresses. This was resolved by adding `0.0.0.0/0` to the IP access list.
+*   **TypeScript Errors:** The Vercel deployment initially failed due to a TypeScript type mismatch in the frontend code. This was resolved by correcting the props passed to the `AnalyticsDashboard` component and ensuring the component was treated as a client-side component.
 
-**Access Mongo Express**: http://localhost:8081
+## Testing Real-time Analytics
 
-- Username: `admin`
-- Password: `password`
-
-### 3. Setup Backend
-
-```bash
-cd backend
-
-# Install Go dependencies
-go mod tidy
-
-# Run the server
-go run main.go
-```
-
-The backend will start on port 8080.
-
-**API Endpoints**:
-
-- `GET /` - Health check
-- `GET /health` - Server status
-
-### 4. Setup Frontend
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The frontend will start on port 3000.
-
-**Frontend URL**: http://localhost:3000
-
-## Environment Variables
-
-### Backend (.env)
-
-```
-PORT=8080
-MONGODB_URI=mongodb://localhost:27017
-DB_NAME=form_builder
-```
-
-### Frontend (.env.local)
-
-```
-NEXT_PUBLIC_API_URL=http://localhost:8080
-```
-
-## Development
-
-### Backend Development
-
-- The Go server automatically reloads when you make changes
-- MongoDB connection is established on startup
-- CORS is configured to allow frontend requests
-
-### Frontend Development
-
-- Hot reloading enabled
-- TypeScript compilation
-- TailwindCSS with JIT compilation
-
-## Database Schema
-
-### Forms Collection
-
-```json
-{
-	"_id": "ObjectId",
-	"title": "string",
-	"description": "string",
-	"fields": [
-		{
-			"id": "string",
-			"type": "text|email|textarea|select|checkbox|radio",
-			"label": "string",
-			"required": "boolean",
-			"placeholder": "string",
-			"options": ["array of options for select/radio"]
-		}
-	],
-	"settings": {
-		"allowMultipleResponses": "boolean",
-		"requireAuthentication": "boolean",
-		"theme": "string"
-	},
-	"created_at": "Date",
-	"updated_at": "Date",
-	"user_id": "string"
-}
-```
-
-### Responses Collection
-
-```json
-{
-	"_id": "ObjectId",
-	"form_id": "ObjectId",
-	"data": {
-		"field_id": "response_value"
-	},
-	"submitted_at": "Date",
-	"user_agent": "string",
-	"ip_address": "string"
-}
-```
-
-## Next Steps
-
-1. **Form Builder Interface**: Create the drag-and-drop form builder
-2. **Form Rendering**: Build dynamic form renderer
-3. **Response Collection**: Implement form submission handling
-4. **Analytics Dashboard**: Create real-time response visualization
-5. **User Authentication**: Add user management system
-6. **Real-time Updates**: Implement WebSocket connections for live updates
-
-## Troubleshooting
-
-### MongoDB Connection Issues
-
-- Ensure Docker is running
-- Check if ports 27017 and 8081 are available
-- Verify MongoDB container is healthy: `docker-compose ps`
-
-### Go Dependencies
-
-- Run `go mod tidy` to clean up dependencies
-- Ensure Go version is 1.21 or higher
-
-### Frontend Issues
-
-- Clear `.next` folder and restart: `rm -rf .next && npm run dev`
-- Check Node.js version: `node --version`
-
-## License
-
-This project is part of the Dune take-home assignment.
+1.  **Open the form builder** and create a new form.
+2.  **Add a few fields** to the form and save it.
+3.  **Open the analytics page** for the form.
+4.  **In a separate browser window or tab, open the form** using the shareable link.
+5.  **Submit a few responses** to the form.
+6.  **Observe the analytics page.** The response count and field-level analytics should update in real-time without needing to refresh the page.
