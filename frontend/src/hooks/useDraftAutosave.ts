@@ -1,50 +1,79 @@
 /** @format */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { AnyField, FormDraft } from '@/lib/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { AnyField, FormDoc } from '@/lib/types';
 import { createForm, updateForm } from '@/lib/api';
 
-type Opts = { delay?: number; enabled?: boolean };
+type Draft = {
+	id: string | null;
+	title: string;
+	fields: AnyField[];
+};
 
+type Options = {
+	delay?: number; // ms
+};
+
+type UseDraftAutosave = {
+	formId: string | null;
+	lastSavedAt: number | null;
+	saveNow: () => Promise<void>;
+	setFormId: (id: string | null) => void;
+};
+
+/**
+ * Autosaves the builder draft to the backend.
+ * - If no formId yet: POST /forms
+ * - Else: PUT  /forms/:id
+ */
 export default function useDraftAutosave(
-	draft: { title: string; fields: AnyField[]; id?: string | null },
-	opts?: Opts,
-) {
-	const { delay = 600, enabled = true } = opts ?? {};
-	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+	draft: Draft,
+	opts: Options = {},
+): UseDraftAutosave {
+	const delay = opts.delay ?? 600;
 	const [formId, setFormId] = useState<string | null>(draft.id ?? null);
-	const timer = useRef<number | null>(null);
+	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
-	const saveNow = async () => {
-		if (!enabled) return;
-		const payload = { title: draft.title, fields: draft.fields } as Omit<
-			FormDraft,
-			'updatedAt'
-		>;
-		try {
-			const saved = formId
-				? await updateForm(formId, payload as any)
-				: await createForm(payload as any);
+	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const inflight = useRef<Promise<void> | null>(null);
+	const latest = useRef<Draft>(draft);
+	latest.current = draft;
+
+	const doSave = useCallback(async () => {
+		const { title, fields } = latest.current;
+		if (!title && fields.length === 0) return;
+
+		let saved: FormDoc;
+		if (!formId) {
+			saved = await createForm({ title, fields });
 			setFormId(saved.id);
-			setLastSavedAt(Date.now());
-		} catch (e) {
-			// You could surface a toast here
-			console.error('Autosave failed:', e);
+		} else {
+			saved = await updateForm(formId, { title, fields });
 		}
-	};
+		setLastSavedAt(Date.now());
+	}, [formId]);
 
+	const saveNow = useCallback(async () => {
+		if (inflight.current) await inflight.current;
+		inflight.current = doSave();
+		try {
+			await inflight.current;
+		} finally {
+			inflight.current = null;
+		}
+	}, [doSave]);
+
+	// Debounced autosave
 	useEffect(() => {
-		if (!enabled) return;
-		if (timer.current) window.clearTimeout(timer.current);
-		timer.current = window.setTimeout(() => {
+		if (timer.current) clearTimeout(timer.current);
+		timer.current = setTimeout(() => {
 			void saveNow();
 		}, delay);
 		return () => {
-			if (timer.current) window.clearTimeout(timer.current);
+			if (timer.current) clearTimeout(timer.current);
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [draft.title, draft.fields, enabled, delay]);
+	}, [draft.title, draft.fields, delay, saveNow]);
 
 	return { formId, lastSavedAt, saveNow, setFormId };
 }

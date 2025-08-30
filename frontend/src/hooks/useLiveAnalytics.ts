@@ -2,52 +2,75 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getAnalytics, longPollAnalytics } from '@/lib/api';
 import type { ServerAnalytics } from '@/lib/types';
+import { getAnalytics, longPollAnalytics } from '@/lib/api';
 
-export default function useLiveAnalytics(formId: string | null) {
-	const [analytics, setAnalytics] = useState<ServerAnalytics | null>(null);
-	const stopRef = useRef(false);
+type UseLiveAnalytics = {
+	data: ServerAnalytics | null;
+	error: string | null;
+};
 
+/**
+ * Fetches analytics once, then long-polls for updates.
+ * Uses ?sinceMs to only return when new responses arrive.
+ */
+export default function useLiveAnalytics(formId: string): UseLiveAnalytics {
+	const [data, setData] = useState<ServerAnalytics | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const abortRef = useRef<AbortController | null>(null);
+	const mounted = useRef<boolean>(true);
+
+	// Initial load
 	useEffect(() => {
-		stopRef.current = false;
-		if (!formId) {
-			setAnalytics(null);
-			return;
-		}
-
-		let since = 0;
-
-		const run = async () => {
-			// initial snapshot
+		mounted.current = true;
+		(async () => {
 			try {
-				const snap = await getAnalytics(formId);
-				if (stopRef.current) return;
-				setAnalytics(snap);
-				since = snap.lastResponseMs || 0;
-			} catch {
-				await new Promise((r) => setTimeout(r, 1200));
+				const an = await getAnalytics(formId);
+				if (mounted.current) setData(an);
+			} catch (e) {
+				if (mounted.current)
+					setError(e instanceof Error ? e.message : 'Failed to load analytics');
 			}
-
-			// long-poll loop
-			while (!stopRef.current) {
-				try {
-					const next = await longPollAnalytics(formId, since);
-					if (!(next as any)?.timeout && next) {
-						setAnalytics(next as ServerAnalytics);
-						since = (next as ServerAnalytics).lastResponseMs || since;
-					}
-				} catch {
-					await new Promise((r) => setTimeout(r, 1000));
-				}
-			}
-		};
-
-		void run();
+		})();
 		return () => {
-			stopRef.current = true;
+			mounted.current = false;
+			if (abortRef.current) abortRef.current.abort();
 		};
 	}, [formId]);
 
-	return analytics;
+	// Long-poll loop
+	useEffect(() => {
+		let active = true;
+
+		async function loop(): Promise<void> {
+			while (active) {
+				try {
+					const since = data?.lastResponseMs ?? 0;
+					abortRef.current?.abort(); // cancel any prior poll
+					const ac = new AbortController();
+					abortRef.current = ac;
+
+					const fresh = await longPollAnalytics(formId, since, ac.signal);
+					if (!active || !mounted.current) return;
+					setData(fresh);
+					// immediately continue to next poll for new updates
+				} catch (e) {
+					if (!active || !mounted.current) return;
+					// Backoff on network/timeout errors; keep UI usable
+					await new Promise((r) => setTimeout(r, 1000));
+				}
+			}
+		}
+
+		if (formId) {
+			void loop();
+		}
+
+		return () => {
+			active = false;
+			abortRef.current?.abort();
+		};
+	}, [formId, data?.lastResponseMs]);
+
+	return { data, error };
 }

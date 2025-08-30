@@ -1,5 +1,9 @@
 /** @format */
 
+/* --------------------------------------------------------------------------
+ * Field model
+ * -------------------------------------------------------------------------- */
+
 export type FieldType = 'text' | 'multipleChoice' | 'checkboxes' | 'rating';
 
 export interface BaseField {
@@ -30,8 +34,8 @@ export interface CheckboxesField extends BaseField {
 
 export interface RatingField extends BaseField {
 	type: 'rating';
-	scale: number;
-	min?: number;
+	scale: number; // number of stars
+	min?: number; // minimum allowed rating
 }
 
 export type AnyField =
@@ -39,6 +43,10 @@ export type AnyField =
 	| MultipleChoiceField
 	| CheckboxesField
 	| RatingField;
+
+/* --------------------------------------------------------------------------
+ * Draft / Validation / Answers
+ * -------------------------------------------------------------------------- */
 
 export interface FormDraft {
 	id: string;
@@ -55,21 +63,39 @@ export interface FormAnswers {
 	[fieldId: string]: unknown;
 }
 
+/* --------------------------------------------------------------------------
+ * Form / Response documents (as returned by backend)
+ * -------------------------------------------------------------------------- */
+
 export interface FormDoc {
 	id: string;
 	title: string;
 	fields: AnyField[];
+
+	// Your previous shape
 	createdAt: number;
 	updatedAt: number;
+
+	// Optional metadata commonly returned by API
+	responseCount?: number;
+	lastResponseAt?: number | string | null;
+	lastResponseMs?: number | null;
 }
 
 export interface FormResponse {
 	id: string;
 	formId: string;
-	submittedAt: number;
+	submittedAt: number; // epoch ms in your previous shape
 	answers: FormAnswers;
 }
-// --- Server analytics payloads ---
+
+// Alias used by some helpers/hooks
+export type ResponseDoc = FormResponse;
+
+/* --------------------------------------------------------------------------
+ * Server analytics payloads
+ * -------------------------------------------------------------------------- */
+
 export interface ServerBar {
 	label: string;
 	value: number;
@@ -89,26 +115,6 @@ export interface ServerFieldAnalytics {
 export interface ServerAnalytics {
 	formId: string;
 	responseCount: number;
-	lastResponseMs: number;
+	lastResponseMs: number | null;
 	perField: ServerFieldAnalytics[];
-}
-// --- Server analytics payloads ---
-export interface ServerBar { label: string; value: number }
-
-export interface ServerFieldAnalytics {
-  fieldId: string;
-  label: string;
-  type: FieldType | string;
-  summary: string;
-  bars: ServerBar[];
-  average?: number;
-  scale?: number;
-  responseN: number;
-}
-
-export interface ServerAnalytics {
-  formId: string;
-  responseCount: number;
-  lastResponseMs: number;
-  perField: ServerFieldAnalytics[];
 }
